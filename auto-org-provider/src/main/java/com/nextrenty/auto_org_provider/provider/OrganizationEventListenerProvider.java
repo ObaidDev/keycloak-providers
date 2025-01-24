@@ -7,6 +7,7 @@ import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.OrganizationModel;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.organization.OrganizationProvider;
 
@@ -20,7 +21,9 @@ public class OrganizationEventListenerProvider implements EventListenerProvider{
 
     @Override
     public void close() {
-        throw new UnsupportedOperationException("Unimplemented method 'close'");
+        /****
+         * 
+         */
     }
 
     @Override
@@ -36,7 +39,9 @@ public class OrganizationEventListenerProvider implements EventListenerProvider{
 
     @Override
     public void onEvent(AdminEvent arg0, boolean arg1) {
-        throw new UnsupportedOperationException("Unimplemented method 'onEvent'");
+        /****
+         * 
+         */
     }
     
 
@@ -51,7 +56,7 @@ public class OrganizationEventListenerProvider implements EventListenerProvider{
                                             user.getUsername() +"-org-alias"
                                         );
         
-        organizationProvider.addMember(organization, user);
+        organizationProvider.addManagedMember(organization, user);
 
     }
 }
