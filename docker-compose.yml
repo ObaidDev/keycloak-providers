@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16.2
+    volumes:
+      - postgres_keycloak_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - keycloak_network
+    restart: unless-stopped
+  keycloak:
+    image: quay.io/keycloak/keycloak
+    command: start
+    volumes:
+      - ./keycloakBind/themes:/opt/keycloak/themes
+      - ./keycloakBind/conf:/opt/keycloak/conf
+      - ./providers:/opt/keycloak/providers
+    environment:
+      KC_HTTP_ENABLED: true
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: false
+
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres/${POSTGRES_DB}
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - '127.0.0.1:8081:8080'
+
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    networks:
+      - keycloak_network
+
+volumes:
+  postgres_keycloak_data:
+    driver: local
+
+networks:
+  keycloak_network: {}
