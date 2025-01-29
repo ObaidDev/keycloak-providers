@@ -30,13 +30,8 @@ public class TrackSwiftlyResourceProvider implements RealmResourceProvider{
 
     @Override
     public Object getResource() {
-
-        RealmModel realm = session.getContext().getRealm();
-
-        OrganizationProvider provider = session.getProvider(OrganizationProvider.class);
-        OrganizationModel organization = provider.getById("eadeaa80-5b4e-45c5-ba99-224cdf81cb87") ;
         
-        return new TrackSwiftlyResource(session , organization);
+        return new TrackSwiftlyResource(session );
     }
 
 
