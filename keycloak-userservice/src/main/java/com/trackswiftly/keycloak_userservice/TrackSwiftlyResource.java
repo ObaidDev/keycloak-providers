@@ -86,10 +86,28 @@ public class TrackSwiftlyResource {
         AuthenticateMiddleware.checkRealm(session);
         AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session) ;
         AuthenticateMiddleware.checkRole(authResult, session, List.of("ADMIN" , "MANAGER")) ;
+        
+        /***
+         * 
+         *  get the first org of the crreunt user , we will allow to the user to be part of just one org .
+         */
 
-        OrganizationModel organization = provider.getById("eadeaa80-5b4e-45c5-ba99-224cdf81cb87") ;
+        Stream<OrganizationModel> organizations = provider.getByMember(authResult.getUser());
 
-        return new OrganizationInvitationService(session, organization).inviteUser(email, firstName, lastName);
+        Optional<OrganizationModel> firstOrganization = organizations.findFirst();
+        
+        if (firstOrganization.isPresent()) {
+            OrganizationModel organization = firstOrganization.get();
+
+            return new OrganizationInvitationService(session, organization).inviteUser(email, firstName, lastName);
+
+        } else {
+
+            return Response.status(Response.Status.NOT_FOUND)
+                           .entity("No organization found for the user.")
+                           .build();
+        }
+
     }
 
 
