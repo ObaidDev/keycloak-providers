@@ -2,6 +2,8 @@ package com.trackswiftly.keycloak_userservice;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
@@ -12,6 +14,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.OrganizationModel;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.UserModel;
 import org.keycloak.organization.OrganizationProvider;
 import org.keycloak.services.managers.AuthenticationManager.AuthResult;
 import org.keycloak.services.resources.KeycloakOpenAPI;
@@ -88,5 +91,63 @@ public class TrackSwiftlyResource {
 
         return new OrganizationInvitationService(session, organization).inviteUser(email, firstName, lastName);
     }
+
+
+    @GET
+	@Path("myorg")
+	@Produces(MediaType.APPLICATION_JSON)
+	@Operation(
+		summary = "Oragnization endpoint",
+		description = "This endpoint returns Oranization of the current user ."
+	)
+    @APIResponse(
+		responseCode = "200",
+		description = "",
+		content = {@Content(
+			schema = @Schema(
+				implementation = Response.class,
+				type = SchemaType.OBJECT
+			)
+		)}
+	)
+    public Response myOrg() {
+
+        AuthenticateMiddleware.checkRealm(session);
+        AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session) ;
+
+
+        UserModel authenticatedUser = authResult.getUser();
+
+        Stream<OrganizationModel> organizations = provider.getByMember(authenticatedUser);
+
+        Optional<OrganizationModel> firstOrganization = organizations.findFirst();
+
+        if (firstOrganization.isPresent()) {
+            OrganizationModel organization = firstOrganization.get();
+
+            return Response.ok(
+                Map.of(
+                    "name", organization.getName() ,
+                    "id" , organization.getId()
+                )
+            ).build();
+        } else {
+
+            return Response.status(Response.Status.NOT_FOUND)
+                           .entity("No organization found for the user.")
+                           .build();
+        }
+
+	}
+
+
+
+
+
+
+
+
+
+
     
 }
