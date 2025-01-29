@@ -11,11 +11,20 @@
 	<url/>
 	
 	<properties>
-		<keycloak.version>26.1.0</keycloak.version>
-		<maven.compiler.source>${java.version}</maven.compiler.source>
+        <java.version>17</java.version>
+        <keycloak.version>26.1.0</keycloak.version>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
-	</properties>
+    </properties>
+
 	<dependencies>
+
+        <dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+            <version>1.18.36</version>
+		</dependency>
+
 		<dependency>
             <groupId>org.keycloak</groupId>
             <artifactId>keycloak-core</artifactId>
