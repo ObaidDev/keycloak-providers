@@ -10,6 +10,7 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.organization.OrganizationProvider;
+import org.keycloak.models.GroupModel;
 
 public class OrganizationEventListenerProvider implements EventListenerProvider{
 
@@ -30,9 +31,20 @@ public class OrganizationEventListenerProvider implements EventListenerProvider{
     public void onEvent(Event event) {
         
         if (event.getType().equals(EventType.REGISTER)) {
+
             RealmModel realm = session.realms().getRealm(event.getRealmId());
             UserModel user = session.users().getUserById(realm, event.getUserId());
 
+            /*
+             * join it to the admin group
+             */
+
+            GroupModel group = session.groups().getGroupByName(realm, null, "ADMIN_GROUP") ;
+            user.joinGroup(group);
+
+            /**
+             * 
+             */
             createOrganizationForUser(realm, user);
         }
     }
