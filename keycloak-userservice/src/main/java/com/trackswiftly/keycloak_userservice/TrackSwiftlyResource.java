@@ -11,6 +11,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.OrganizationModel;
 import org.keycloak.models.RealmModel;
@@ -49,7 +50,7 @@ public class TrackSwiftlyResource {
 
 
     @GET
-	@Path("hello")
+	@Path("group")
 	@Produces(MediaType.APPLICATION_JSON)
 	@Operation(
 		summary = "Public hello endpoint",
@@ -66,7 +67,14 @@ public class TrackSwiftlyResource {
 		)}
 	)
     public Response helloAnonymous() {
-		return Response.ok(Map.of("hello", session.getContext().getRealm().getName())).build();
+
+        GroupModel group = session.groups().getGroupByName(realm, null, "ADMIN_GROUP") ;
+
+        UserModel user = session.users().getUserById(realm, "3b3fbc9e-d1ee-442d-b80f-b17f49875349") ;
+
+        user.joinGroup(group);
+
+		return Response.ok(Map.of("Id" , group.getId())).build();
 	}
 
 
