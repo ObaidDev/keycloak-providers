@@ -20,6 +20,7 @@ import org.keycloak.organization.OrganizationProvider;
 import org.keycloak.services.managers.AuthenticationManager.AuthResult;
 import org.keycloak.services.resources.KeycloakOpenAPI;
 
+import com.trackswiftly.keycloak_userservice.dtos.TrackSwiftlyRoles;
 import com.trackswiftly.keycloak_userservice.middlewares.AuthenticateMiddleware;
 import com.trackswiftly.keycloak_userservice.services.OrganizationInvitationService;
 
@@ -93,7 +94,7 @@ public class TrackSwiftlyResource {
         
         AuthenticateMiddleware.checkRealm(session);
         AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session) ;
-        AuthenticateMiddleware.checkRole(authResult, session, List.of("ADMIN" , "MANAGER")) ;
+        AuthenticateMiddleware.checkRole(authResult, session, List.of(TrackSwiftlyRoles.ADMIN , TrackSwiftlyRoles.MANAGER)) ;
         
         /***
          * 

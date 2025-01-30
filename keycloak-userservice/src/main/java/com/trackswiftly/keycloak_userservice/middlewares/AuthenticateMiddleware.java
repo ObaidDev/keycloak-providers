@@ -9,6 +9,8 @@ import org.keycloak.models.UserModel;
 import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.services.managers.AuthenticationManager.AuthResult;
 
+import com.trackswiftly.keycloak_userservice.dtos.TrackSwiftlyRoles;
+
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotAuthorizedException;
 
@@ -40,7 +42,7 @@ public class AuthenticateMiddleware {
     public static void checkRole(
         AuthResult auth ,
         KeycloakSession session ,
-        List<String> roleNames
+        List<TrackSwiftlyRoles> roleNames
     ) {
 
         UserModel authenticatedUser = auth.getUser();
@@ -62,9 +64,9 @@ public class AuthenticateMiddleware {
      * @param roleNames the list of role names to check against
      * @return true if the user has any of the roles, false otherwise
      */
-    private static boolean userHasAnyRole(KeycloakSession session, UserModel user, List<String> roleNames) {
-        for (String roleName : roleNames) {
-            RoleModel role = session.getContext().getRealm().getRole(roleName);
+    private static boolean userHasAnyRole(KeycloakSession session, UserModel user, List<TrackSwiftlyRoles> roleNames) {
+        for (TrackSwiftlyRoles roleName : roleNames) {
+            RoleModel role = session.getContext().getRealm().getRole(roleName.toString());
             if (role != null && user.hasRole(role)) {
                 return true;
             }
