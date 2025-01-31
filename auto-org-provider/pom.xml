@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.nextrenty</groupId>
 	<artifactId>auto-org-provider</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.1</version>
 	<name>auto-org-provider</name>
 	<description>&quot;Auto&quot; indicates automation, and &quot;Org&quot; is short for organization</description>
 	<url/>

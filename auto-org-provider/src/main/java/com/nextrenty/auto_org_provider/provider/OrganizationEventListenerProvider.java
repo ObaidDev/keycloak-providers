@@ -1,5 +1,7 @@
 package com.nextrenty.auto_org_provider.provider;
 
+import java.util.Map;
+
 import org.keycloak.events.Event;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventType;
@@ -11,6 +13,8 @@ import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.organization.OrganizationProvider;
 import org.keycloak.models.GroupModel;
+
+
 
 public class OrganizationEventListenerProvider implements EventListenerProvider{
 
@@ -39,13 +43,16 @@ public class OrganizationEventListenerProvider implements EventListenerProvider{
              * join it to the admin group
              */
 
-            GroupModel group = session.groups().getGroupByName(realm, null, "ADMIN_GROUP") ;
-            user.joinGroup(group);
+            if (isDirectRegistration(event)) {
 
-            /**
-             * 
-             */
-            createOrganizationForUser(realm, user);
+
+                // Join the user to the admin group
+                GroupModel group = session.groups().getGroupByName(realm, null, "ADMIN_GROUP");
+                user.joinGroup(group);
+    
+                // Create an organization for the user
+                createOrganizationForUser(realm, user);
+            }
         }
     }
 
@@ -69,6 +76,15 @@ public class OrganizationEventListenerProvider implements EventListenerProvider{
                                         );
         
         organizationProvider.addManagedMember(organization, user);
+
+    }
+
+
+    private boolean isDirectRegistration(Event event) {
+        
+        Map<String, String> details = event.getDetails();
+
+        return !(details.containsKey("org_id") && "ORGIVT".equals(details.get("action"))) ;
 
     }
 }
