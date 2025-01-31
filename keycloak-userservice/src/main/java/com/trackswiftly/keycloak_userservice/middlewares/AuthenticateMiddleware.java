@@ -33,8 +33,8 @@ public class AuthenticateMiddleware {
     public static void checkRealm(KeycloakSession session) {
         RealmModel realm = session.getContext().getRealm();
 
-        if (!realm.getName().equals("trackswiftly")) {
-            throw new ForbiddenException("This Endpoint Is Avilable Just In 'Trackswiftly' Realm") ;
+        if (!realm.getName().matches("^.*(?i)(TrackSwiftly).*$")) {
+            throw new ForbiddenException("This Endpoint Is Available Only for TrackSwiftly Realms");
         }
     }
 
