@@ -51,7 +51,7 @@ public class OrganizationEventListenerProvider implements EventListenerProvider{
                 user.joinGroup(group);
     
                 // Create an organization for the user
-                createOrganizationForUser(realm, user);
+                createOrganizationForUser(user);
             }
         }
     }
@@ -66,7 +66,7 @@ public class OrganizationEventListenerProvider implements EventListenerProvider{
 
 
 
-    private void createOrganizationForUser(RealmModel realm, UserModel user) {
+    private void createOrganizationForUser(UserModel user) {
        
         OrganizationProvider organizationProvider = session.getProvider(OrganizationProvider.class);
 
