@@ -29,6 +29,7 @@ import jakarta.ws.rs.FormParam;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -50,8 +51,8 @@ public class TrackSwiftlyResource {
     }
 
 
-    @GET
-	@Path("group")
+    @POST
+	@Path("hello/{group}/users/{userId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	@Operation(
 		summary = "Public hello endpoint",
@@ -67,19 +68,34 @@ public class TrackSwiftlyResource {
 			)
 		)}
 	)
-    public Response helloAnonymous() {
+    public Response helloAnonymous(
+        @PathParam("userId") String userId,
+        @PathParam("group") String groupName
+    ) {
 
-        GroupModel group = session.groups().getGroupByName(realm, null, "ADMIN_GROUP") ;
+        // GroupModel group = session.groups().getGroupByName(realm, null, "ADMIN_GROUP") ;
 
-        UserModel user = session.users().getUserById(realm, "3b3fbc9e-d1ee-442d-b80f-b17f49875349") ;
+        // UserModel user = session.users().getUserById(realm, "3b3fbc9e-d1ee-442d-b80f-b17f49875349") ;
 
-        user.joinGroup(group);
+        // user.joinGroup(group);
 
-		return Response.ok(Map.of("Id" , group.getId())).build();
+        UserModel targetUser = session.users().getUserById(session.getContext().getRealm(), userId);
+
+        GroupModel group = session.groups().getGroupByName(realm, null, groupName.toUpperCase());
+
+        targetUser.joinGroup(group);
+
+		return Response.ok(Map.of("name" , groupName , "user" , userId)).build();
 	}
 
 
-
+    /*******
+     * 
+     * @param email
+     * @param firstName
+     * @param lastName
+     * @return
+     */
 
 	@Path("invite-user")
     @POST
@@ -117,6 +133,66 @@ public class TrackSwiftlyResource {
                            .build();
         }
 
+    }
+
+
+    /**
+     * 
+     * @return
+     */
+
+    @Path("groups")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Tag(name = KeycloakOpenAPI.Admin.Tags.ORGANIZATIONS)
+    @Operation(summary = "Retrieve groups for the current realm")
+    public Response getRealmGroups() {
+
+        AuthenticateMiddleware.checkRealm(session);
+
+        AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session);
+        
+        AuthenticateMiddleware.checkRole(authResult, session, 
+            List.of(TrackSwiftlyRoles.ADMIN, TrackSwiftlyRoles.MANAGER));
+        
+        Stream<GroupModel> groupsStream = session.getContext().getRealm().getGroupsStream();
+        List<Map<String, String>> groups = groupsStream
+            .map(group -> Map.of(
+                "id", group.getId(), 
+                "name", group.getName()
+            ))
+            .toList();
+        
+        return Response.ok(groups).build();
+    }
+
+
+    @POST
+    @Path("groups/{group}/users/{userId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response assignUserToGroup(
+        @PathParam("userId") String userId, 
+        @PathParam("group") String groupName
+    ) {
+        AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session);
+        UserModel targetUser = session.users().getUserById(session.getContext().getRealm(), userId);
+        
+        AuthenticateMiddleware.checkRole(authResult, session, List.of(TrackSwiftlyRoles.ADMIN , TrackSwiftlyRoles.MANAGER)) ;
+
+        AuthenticateMiddleware.checkOrganizationAccess(
+            provider, 
+            authResult.getUser(), 
+            targetUser
+        );
+
+        GroupModel group = session.groups().getGroupByName(realm, null, groupName.toUpperCase());
+
+
+        targetUser.joinGroup(group);
+
+        return Response.ok(Map.of("group" , groupName , "user" , targetUser.getUsername())).build();
+        
     }
 
 
