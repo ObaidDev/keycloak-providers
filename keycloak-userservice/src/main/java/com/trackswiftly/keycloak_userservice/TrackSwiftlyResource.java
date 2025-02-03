@@ -73,19 +73,9 @@ public class TrackSwiftlyResource {
         @PathParam("group") String groupName
     ) {
 
-        // GroupModel group = session.groups().getGroupByName(realm, null, "ADMIN_GROUP") ;
+      
 
-        // UserModel user = session.users().getUserById(realm, "3b3fbc9e-d1ee-442d-b80f-b17f49875349") ;
-
-        // user.joinGroup(group);
-
-        UserModel targetUser = session.users().getUserById(session.getContext().getRealm(), userId);
-
-        GroupModel group = session.groups().getGroupByName(realm, null, groupName.toUpperCase());
-
-        targetUser.joinGroup(group);
-
-		return Response.ok(Map.of("name" , groupName , "user" , userId)).build();
+		return Response.ok(Map.of("name" , "test" , "user" , "test")).build();
 	}
 
 
