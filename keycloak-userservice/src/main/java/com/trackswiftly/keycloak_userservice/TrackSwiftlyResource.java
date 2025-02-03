@@ -25,6 +25,7 @@ import com.trackswiftly.keycloak_userservice.middlewares.AuthenticateMiddleware;
 import com.trackswiftly.keycloak_userservice.services.OrganizationInvitationService;
 
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.FormParam;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -166,9 +167,17 @@ public class TrackSwiftlyResource {
         @PathParam("group") String groupName
     ) {
         AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session);
-        UserModel targetUser = session.users().getUserById(session.getContext().getRealm(), userId);
         
         AuthenticateMiddleware.checkRole(authResult, session, List.of(TrackSwiftlyRoles.ADMIN , TrackSwiftlyRoles.MANAGER)) ;
+         
+        /**
+         * get the target user
+         */
+        UserModel targetUser = session.users().getUserById(session.getContext().getRealm(), userId);
+
+        /**
+         * 
+         */
 
         AuthenticateMiddleware.checkOrganizationAccess(
             provider, 
@@ -183,6 +192,78 @@ public class TrackSwiftlyResource {
 
         return Response.ok(Map.of("group" , groupName , "user" , targetUser.getUsername())).build();
         
+    }
+
+
+
+    @DELETE
+    @Path("groups/{group}/users/{userId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response unAssignUserFromGroup(
+        @PathParam("userId") String userId, 
+        @PathParam("group") String groupName
+    ) {
+        AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session);
+        
+        AuthenticateMiddleware.checkRole(authResult, session, List.of(TrackSwiftlyRoles.ADMIN , TrackSwiftlyRoles.MANAGER)) ;
+        /**
+         * get the target user
+         */
+        UserModel targetUser = session.users().getUserById(session.getContext().getRealm(), userId);
+
+        /**
+         * 
+         */
+
+        AuthenticateMiddleware.checkOrganizationAccess(
+            provider, 
+            authResult.getUser(), 
+            targetUser
+            );
+            
+        GroupModel group = session.groups().getGroupByName(realm, null, groupName.toUpperCase());
+
+
+        targetUser.leaveGroup(group);
+
+        return Response.ok(Map.of("group" , groupName , "user" , targetUser.getUsername())).build();
+        
+    }
+
+
+
+    @Path("users")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getUsers() {
+        
+        
+        AuthenticateMiddleware.checkRealm(session);
+        AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session) ;
+        AuthenticateMiddleware.checkRole(authResult, session, List.of(TrackSwiftlyRoles.ADMIN , TrackSwiftlyRoles.MANAGER)) ;
+        
+        /***
+         * 
+         *  get the first org of the crreunt user , we will allow to the user to be part of just one org .
+         */
+
+        Stream<OrganizationModel> organizations = provider.getByMember(authResult.getUser());
+
+        Optional<OrganizationModel> firstOrganization = organizations.findFirst();
+        
+        if (firstOrganization.isPresent()) {
+            OrganizationModel organization = firstOrganization.get();
+
+            return new OrganizationInvitationService(session, organization).getOrgMembers(provider , 0 , 20);
+
+        } else {
+
+            return Response.status(Response.Status.NOT_FOUND)
+                           .entity("No organization found for the user.")
+                           .build();
+        }
+
     }
 
 
