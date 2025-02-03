@@ -13,7 +13,6 @@ import org.keycloak.services.ErrorResponse;
 import org.keycloak.services.ServicesLogger;
 import org.keycloak.services.Urls;
 import org.keycloak.services.resources.LoginActionsService;
-import org.keycloak.services.resources.admin.AdminEventBuilder;
 import org.keycloak.storage.adapter.InMemoryUserAdapter;
 import org.keycloak.utils.StringUtil;
 
@@ -25,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.keycloak.OAuth2Constants;
@@ -33,9 +31,6 @@ import org.keycloak.authentication.actiontoken.inviteorg.InviteOrgActionToken;
 import org.keycloak.common.util.Time;
 import org.keycloak.email.EmailException;
 import org.keycloak.email.EmailTemplateProvider;
-import org.keycloak.events.admin.OperationType;
-import org.keycloak.events.admin.ResourceType;
-
 
 public class OrganizationInvitationService {
 
@@ -172,8 +167,8 @@ public class OrganizationInvitationService {
             organization, 
             Map.of(), 
             null, 
-            0, 
-            20
+            first, 
+            max
         );
 
         List<Map<String, Object>> userDetails = users
