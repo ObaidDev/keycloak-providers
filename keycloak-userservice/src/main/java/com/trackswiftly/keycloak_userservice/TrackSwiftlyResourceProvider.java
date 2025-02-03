@@ -1,9 +1,6 @@
 package com.trackswiftly.keycloak_userservice;
 
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.OrganizationModel;
-import org.keycloak.models.RealmModel;
-import org.keycloak.organization.OrganizationProvider;
 import org.keycloak.services.resource.RealmResourceProvider;
 
 
