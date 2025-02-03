@@ -1,11 +1,14 @@
 package com.trackswiftly.keycloak_userservice.middlewares;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.OrganizationModel;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
+import org.keycloak.organization.OrganizationProvider;
 import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.services.managers.AuthenticationManager.AuthResult;
 
@@ -50,6 +53,28 @@ public class AuthenticateMiddleware {
 
         if (!userHasAnyRole(session, authenticatedUser, roleNames)) {
             throw new ForbiddenException("You are not allowed") ;
+        }
+    }
+
+
+
+    public static void checkOrganizationAccess(
+        OrganizationProvider provider, 
+        UserModel adminUser, 
+        UserModel targetUser
+    ) {
+        Stream<OrganizationModel> adminOrganizations = provider.getByMember(adminUser);
+        Stream<OrganizationModel> targetUserOrganizations = provider.getByMember(targetUser);
+
+        boolean sharedOrganization = adminOrganizations
+            .anyMatch(adminOrg -> 
+                targetUserOrganizations.anyMatch(targetOrg -> 
+                    targetOrg.getId().equals(adminOrg.getId())
+                )
+            );
+
+        if (!sharedOrganization) {
+            throw new ForbiddenException("Users must be in the same organization");
         }
     }
 
