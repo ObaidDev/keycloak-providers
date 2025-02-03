@@ -5,6 +5,7 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.OrganizationModel;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
+import org.keycloak.organization.OrganizationProvider;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.OIDCLoginProtocolService;
 import org.keycloak.protocol.oidc.utils.OIDCResponseType;
@@ -20,8 +21,12 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.keycloak.OAuth2Constants;
 import org.keycloak.authentication.actiontoken.inviteorg.InviteOrgActionToken;
@@ -159,6 +164,34 @@ public class OrganizationInvitationService {
         return token.serialize(session, realm, session.getContext().getUri());
     }
 
+
+
+
+    public Response getOrgMembers(OrganizationProvider organizationProvider , int first , int max) {
+        Stream<UserModel> users = organizationProvider.getMembersStream(
+            organization, 
+            Map.of(), 
+            null, 
+            0, 
+            20
+        );
+
+        List<Map<String, Object>> userDetails = users
+        .map(user -> {
+            Map<String, Object> details = new HashMap<>();
+            details.put("id", user.getId());
+            details.put("username", user.getUsername());
+            details.put("email", user.getEmail());
+            details.put("firstName", user.getFirstName());
+            details.put("lastName", user.getLastName());
+            details.put("enabled", user.isEnabled());
+            return details;
+        })
+        .toList();
+
+
+        return Response.ok(userDetails).build() ;
+    }
 
 
 
