@@ -188,7 +188,5 @@ public class OrganizationInvitationService {
         return Response.ok(userDetails).build() ;
     }
 
-
-
     
 }
