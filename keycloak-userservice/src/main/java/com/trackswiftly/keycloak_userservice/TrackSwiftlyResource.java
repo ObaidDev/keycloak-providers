@@ -23,15 +23,18 @@ import org.keycloak.services.resources.KeycloakOpenAPI;
 import com.trackswiftly.keycloak_userservice.dtos.TrackSwiftlyRoles;
 import com.trackswiftly.keycloak_userservice.middlewares.AuthenticateMiddleware;
 import com.trackswiftly.keycloak_userservice.services.OrganizationInvitationService;
+import com.trackswiftly.keycloak_userservice.services.UserManagementService;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.FormParam;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
@@ -220,7 +223,7 @@ public class TrackSwiftlyResource {
             provider, 
             authResult.getUser(), 
             targetUser
-            );
+        );
             
         GroupModel group = session.groups().getGroupByName(realm, null, groupName.toUpperCase());
 
@@ -264,6 +267,31 @@ public class TrackSwiftlyResource {
                            .build();
         }
 
+    }
+
+
+
+
+    @Path("users/{userId}/status")
+    @PUT
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response toggleUser(
+        @PathParam("userId") String userId, 
+        @QueryParam("enabled") boolean enabled
+    ) {
+        AuthenticateMiddleware.checkRealm(session);
+        AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session);
+        AuthenticateMiddleware.checkRole(authResult, session, 
+            List.of(TrackSwiftlyRoles.ADMIN));
+        
+        UserModel targetUser = AuthenticateMiddleware.checkOrganizationAccess(
+            session, 
+            provider, 
+            authResult.getUser(), 
+            userId
+        );
+
+        return new UserManagementService(session).toggleUserStatus(targetUser, enabled);
     }
 
 
