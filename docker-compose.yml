@@ -14,10 +14,11 @@ services:
       - 5438:5432
 
   keycloak:
-    image: trackswiftly/keycloak:1.0.0
+    # image: lasthour/keycloak:1.0.2
+    image: quay.io/keycloak/keycloak:26.1.0
     command: start
-    # volumes:
-    #   - ./providers:/opt/keycloak/providers
+    volumes:
+      - ./providers:/opt/keycloak/providers
     environment:
 
       KC_HOSTNAME_STRICT: false
