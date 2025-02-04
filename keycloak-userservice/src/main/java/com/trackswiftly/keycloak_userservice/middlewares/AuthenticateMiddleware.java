@@ -16,6 +16,7 @@ import com.trackswiftly.keycloak_userservice.dtos.TrackSwiftlyRoles;
 
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotAuthorizedException;
+import jakarta.ws.rs.NotFoundException;
 
 public class AuthenticateMiddleware {
 
@@ -76,6 +77,42 @@ public class AuthenticateMiddleware {
         if (!sharedOrganization) {
             throw new ForbiddenException("Users must be in the same organization");
         }
+    }
+
+
+
+    public static UserModel checkOrganizationAccess(
+
+        KeycloakSession session, 
+        OrganizationProvider provider, 
+        UserModel adminUser, 
+        String targetUserId
+
+    ) {
+        RealmModel realm = session.getContext().getRealm();
+        UserModel targetUser = session.users().getUserById(realm, targetUserId);
+
+
+        if (targetUser == null) {
+            throw new NotFoundException("User not found");
+        }
+        
+        Stream<OrganizationModel> adminOrganizations = provider.getByMember(adminUser);
+        Stream<OrganizationModel> targetUserOrganizations = provider.getByMember(targetUser);
+
+        boolean sharedOrganization = adminOrganizations
+            .anyMatch(adminOrg -> 
+                targetUserOrganizations.anyMatch(targetOrg -> 
+                    targetOrg.getId().equals(adminOrg.getId())
+                )
+            );
+
+        if (!sharedOrganization) {
+            // Users must be in the same organization
+            throw new ForbiddenException("access denied or unable to process the item");
+        }
+
+        return targetUser;
     }
 
 
