@@ -41,6 +41,9 @@ import jakarta.ws.rs.core.Response;
 
 public class TrackSwiftlyResource {
 
+
+    private static final String NO_ORGANIZATION_FOUND_FOR_USR = "No organization found for the user." ;
+
     private final KeycloakSession session;
     private final RealmModel realm;
     private final OrganizationProvider provider;
@@ -123,7 +126,7 @@ public class TrackSwiftlyResource {
         } else {
 
             return Response.status(Response.Status.NOT_FOUND)
-                           .entity("No organization found for the user.")
+                           .entity(NO_ORGANIZATION_FOUND_FOR_USR)
                            .build();
         }
 
@@ -224,13 +227,19 @@ public class TrackSwiftlyResource {
             authResult.getUser(), 
             targetUser
         );
-            
+
+
         GroupModel group = session.groups().getGroupByName(realm, null, groupName.toUpperCase());
 
+        AuthenticateMiddleware.checkRoleHierarchy(session, targetUser, targetUser);
 
-        targetUser.leaveGroup(group);
+        return new UserManagementService(session).assignUserToGroup(targetUser, targetUser, group) ;
+            
 
-        return Response.ok(Map.of("group" , groupName , "user" , targetUser.getUsername())).build();
+
+        // targetUser.leaveGroup(group);
+
+        // return Response.ok(Map.of("group" , groupName , "user" , targetUser.getUsername())).build();
         
     }
 
@@ -263,7 +272,7 @@ public class TrackSwiftlyResource {
         } else {
 
             return Response.status(Response.Status.NOT_FOUND)
-                           .entity("No organization found for the user.")
+                           .entity(NO_ORGANIZATION_FOUND_FOR_USR)
                            .build();
         }
 
@@ -336,7 +345,7 @@ public class TrackSwiftlyResource {
         } else {
 
             return Response.status(Response.Status.NOT_FOUND)
-                           .entity("No organization found for the user.")
+                           .entity(NO_ORGANIZATION_FOUND_FOR_USR)
                            .build();
         }
 
