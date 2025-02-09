@@ -1,6 +1,9 @@
 package com.trackswiftly.keycloak_userservice.middlewares;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.keycloak.models.KeycloakSession;
@@ -53,7 +56,10 @@ public class AuthenticateMiddleware {
         UserModel authenticatedUser = auth.getUser();
 
         if (!userHasAnyRole(session, authenticatedUser, roleNames)) {
-            throw new ForbiddenException("You are not allowed") ;
+            throw new ForbiddenException("You do not have the required roles: " + 
+                roleNames.stream()
+                    .map(Enum::name)
+                    .collect(Collectors.joining(", ")));
         }
     }
 
@@ -119,6 +125,54 @@ public class AuthenticateMiddleware {
 
 
 
+    /***
+     * 
+     * @ authorization to ensure managers can't modify users at the same or higher level.
+     * 
+     */
+
+
+
+
+
+    public static void checkRoleHierarchy(KeycloakSession session , UserModel requestingUser, UserModel targetUser) {
+
+        RealmModel realm = session.getContext().getRealm();
+        
+        // Get the role models
+        RoleModel adminRole = realm.getRole(TrackSwiftlyRoles.ADMIN.name());
+        RoleModel managerRole = realm.getRole(TrackSwiftlyRoles.MANAGER.name());
+        
+        if (adminRole == null || managerRole == null) {
+            throw new IllegalStateException("Required roles are not configured in the realm");
+        }
+
+        // Check if requesting user has admin role
+        boolean isAdmin = requestingUser.hasRole(adminRole);
+        
+        // If not admin, check if they have manager role
+        if (!isAdmin) {
+            boolean isManager = requestingUser.hasRole(managerRole);
+            if (!isManager) {
+                throw new ForbiddenException("Insufficient permissions to modify users");
+            }
+
+            // Manager-specific restrictions
+            // Check if target user has admin role (directly or through groups)
+            if (targetUser.hasRole(adminRole)) {
+                throw new ForbiddenException("Managers cannot modify admin accounts");
+            }
+
+            // Check if target user has manager role (directly or through groups)
+            if (targetUser.hasRole(managerRole)) {
+                throw new ForbiddenException("Managers cannot modify other manager accounts");
+            }
+        }
+    }
+
+
+
+
     /**
      * Checks if the user has any of the specified roles.
      *
@@ -128,12 +182,11 @@ public class AuthenticateMiddleware {
      * @return true if the user has any of the roles, false otherwise
      */
     private static boolean userHasAnyRole(KeycloakSession session, UserModel user, List<TrackSwiftlyRoles> roleNames) {
-        for (TrackSwiftlyRoles roleName : roleNames) {
-            RoleModel role = session.getContext().getRealm().getRole(roleName.toString());
-            if (role != null && user.hasRole(role)) {
-                return true;
-            }
-        }
-        return false;
+        RealmModel realm = session.getContext().getRealm();
+        
+        return roleNames.stream()
+            .map(roleName -> realm.getRole(roleName.name()))
+            .filter(Objects::nonNull)
+            .anyMatch(user::hasRole);
     }
-}
+}   
