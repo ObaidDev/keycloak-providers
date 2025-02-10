@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import com.trackswiftly.keycloak_userservice.dtos.TrackSwiftlyRoles;
 
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.NotFoundException;
@@ -148,7 +149,7 @@ public class AuthenticateMiddleware {
             
         if (session == null || requestingUser == null || targetUser == null || targetGroup == null) {
             logger.error("Security violation: Null parameters detected in checkRoleHierarchy");
-            throw new SecurityException("Invalid security context");
+            throw new BadRequestException("Incorrectly sent data");
         }
 
         RealmModel realm = session.getContext().getRealm();
@@ -184,7 +185,14 @@ public class AuthenticateMiddleware {
     }
 
 
-
+    public static void preventUserFromUpdatingThemselves(
+        UserModel requestingUser , UserModel targetUser
+    ) {
+        if (requestingUser.getId().equals(targetUser.getId())) {
+            logger.warn("Security alert: User {} attempted to modify their own permissions", requestingUser.getId());
+            throw new ForbiddenException("Self-modification of permissions is not allowed");
+        }
+    }
 
     /*****
      * 
