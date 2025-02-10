@@ -287,23 +287,57 @@ public class TrackSwiftlyResource {
         @QueryParam("enabled") boolean enabled
     ) {
         AuthenticateMiddleware.checkRealm(session);
+
         AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session);
+
         AuthenticateMiddleware.checkRole(authResult, session, 
             List.of(TrackSwiftlyRoles.ADMIN));
         
         
-        UserModel requestinUser = authResult.getUser() ;
+        UserModel requestingUser = authResult.getUser() ;
+
         UserModel targetUser = AuthenticateMiddleware.checkOrganizationAccess(
             session, 
             provider, 
-            requestinUser , 
+            requestingUser , 
             userId
         );
 
-        AuthenticateMiddleware.preventUserFromUpdatingThemselves(requestinUser, targetUser);
+        AuthenticateMiddleware.preventUserFromUpdatingThemselves(requestingUser, targetUser);
         
 
         return new UserManagementService(session).toggleUserStatus(targetUser, enabled);
+    }
+
+
+
+    @Path("users/{userId}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getUser(
+        @PathParam("userId") String userId
+    ) {
+        AuthenticateMiddleware.checkRealm(session);
+        
+        AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session);
+
+        AuthenticateMiddleware.checkRole(authResult, session, 
+            List.of(TrackSwiftlyRoles.ADMIN , TrackSwiftlyRoles.MANAGER));
+        
+        
+        UserModel requestingUser = authResult.getUser() ;
+
+        UserModel targetUser = AuthenticateMiddleware.checkOrganizationAccess(
+            session, 
+            provider, 
+            requestingUser , 
+            userId
+        );
+
+        // AuthenticateMiddleware.checkRoleHierarchy(session, requestingUser, targetUser , targetUser.getGroupsStream().findFirst().get());
+        
+
+        return new UserManagementService(session).userDetails(targetUser) ;
     }
 
 
