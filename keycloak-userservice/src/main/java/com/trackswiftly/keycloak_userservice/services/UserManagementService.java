@@ -27,7 +27,6 @@ public class UserManagementService {
 
 
     public Response toggleUserStatus(UserModel user, boolean enabled) {
-    //    UserModel user = session.users().getUserById(realm, userId);
        
         if (user == null) {
            return Response.status(Response.Status.NOT_FOUND)
@@ -68,10 +67,44 @@ public class UserManagementService {
         Objects.requireNonNull(group, "Group must not be null");
 
         try {
-            // Use middleware for role hierarchy validation
-            // AuthenticateMiddleware.checkRoleHierarchy(requestingUser, targetUser);
             
             targetUser.joinGroup(group);
+            
+            return Response.ok(Map.of(
+                "userId", targetUser.getId(),
+                "username", targetUser.getUsername(),
+                "groupId", group.getId(),
+                "groupName", group.getName(),
+                "modifiedBy", requestingUser.getUsername()
+            )).build();
+        } catch (ForbiddenException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                .entity(Map.of("error", e.getMessage()))
+                .build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                .entity("Failed to assign user to group: " + e.getMessage())
+                .build();
+        }
+    }
+
+
+
+    public Response unassignUserFromGroup(UserModel requestingUser, UserModel targetUser, GroupModel group) {
+        
+        Response inputValidation = validateInputs(requestingUser, targetUser, group);
+        if (inputValidation != null) {
+            return inputValidation;
+        }
+
+
+        Objects.requireNonNull(targetUser, "Target user must not be null");
+        Objects.requireNonNull(requestingUser, "Target user must not be null");
+        Objects.requireNonNull(group, "Group must not be null");
+
+        try {
+            
+            targetUser.leaveGroup(group);
             
             return Response.ok(Map.of(
                 "userId", targetUser.getId(),

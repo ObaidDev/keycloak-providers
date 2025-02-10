@@ -220,29 +220,25 @@ public class TrackSwiftlyResource {
          */
         UserModel targetUser = session.users().getUserById(session.getContext().getRealm(), userId);
 
+        UserModel requestingUser = authResult.getUser() ;
+
+
         /**
          * 
          */
 
         AuthenticateMiddleware.checkOrganizationAccess(
             provider, 
-            authResult.getUser(), 
+            requestingUser , 
             targetUser
         );
 
 
         GroupModel group = session.groups().getGroupByName(realm, null, groupName.toUpperCase());
 
-        AuthenticateMiddleware.checkRoleHierarchy(session, targetUser, targetUser , group);
+        AuthenticateMiddleware.checkRoleHierarchy(session, requestingUser, targetUser , group);
 
-        return new UserManagementService(session).assignUserToGroup(targetUser, targetUser, group) ;
-            
-
-
-        // targetUser.leaveGroup(group);
-
-        // return Response.ok(Map.of("group" , groupName , "user" , targetUser.getUsername())).build();
-        
+        return new UserManagementService(session).unassignUserFromGroup(requestingUser, targetUser, group) ;  
     }
 
 
@@ -295,12 +291,17 @@ public class TrackSwiftlyResource {
         AuthenticateMiddleware.checkRole(authResult, session, 
             List.of(TrackSwiftlyRoles.ADMIN));
         
+        
+        UserModel requestinUser = authResult.getUser() ;
         UserModel targetUser = AuthenticateMiddleware.checkOrganizationAccess(
             session, 
             provider, 
-            authResult.getUser(), 
+            requestinUser , 
             userId
         );
+
+        AuthenticateMiddleware.preventUserFromUpdatingThemselves(requestinUser, targetUser);
+        
 
         return new UserManagementService(session).toggleUserStatus(targetUser, enabled);
     }
