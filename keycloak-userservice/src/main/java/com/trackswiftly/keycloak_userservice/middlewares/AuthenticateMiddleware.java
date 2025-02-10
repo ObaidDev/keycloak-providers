@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.OrganizationModel;
 import org.keycloak.models.RealmModel;
@@ -14,6 +15,8 @@ import org.keycloak.models.UserModel;
 import org.keycloak.organization.OrganizationProvider;
 import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.services.managers.AuthenticationManager.AuthResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.trackswiftly.keycloak_userservice.dtos.TrackSwiftlyRoles;
 
@@ -22,6 +25,9 @@ import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.NotFoundException;
 
 public class AuthenticateMiddleware {
+
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthenticateMiddleware.class);
 
 
     private AuthenticateMiddleware () {}
@@ -134,43 +140,57 @@ public class AuthenticateMiddleware {
 
 
 
-
-    public static void checkRoleHierarchy(KeycloakSession session , UserModel requestingUser, UserModel targetUser) {
+    public static void checkRoleHierarchy(
+            KeycloakSession session, 
+            UserModel requestingUser, 
+            UserModel targetUser, 
+            GroupModel targetGroup) {
+            
+        if (session == null || requestingUser == null || targetUser == null || targetGroup == null) {
+            logger.error("Security violation: Null parameters detected in checkRoleHierarchy");
+            throw new SecurityException("Invalid security context");
+        }
 
         RealmModel realm = session.getContext().getRealm();
         
-        // Get the role models
+        if (requestingUser.getId().equals(targetUser.getId())) {
+            logger.warn("Security alert: User {} attempted to modify their own permissions", requestingUser.getId());
+            throw new ForbiddenException("Self-modification of permissions is not allowed");
+        }
+
         RoleModel adminRole = realm.getRole(TrackSwiftlyRoles.ADMIN.name());
         RoleModel managerRole = realm.getRole(TrackSwiftlyRoles.MANAGER.name());
         
-        if (adminRole == null || managerRole == null) {
-            throw new IllegalStateException("Required roles are not configured in the realm");
-        }
+        AuthenticationUtils.validateRolesExist(adminRole, managerRole);
 
-        // Check if requesting user has admin role
         boolean isAdmin = requestingUser.hasRole(adminRole);
         
-        // If not admin, check if they have manager role
         if (!isAdmin) {
             boolean isManager = requestingUser.hasRole(managerRole);
             if (!isManager) {
+                logger.warn("Unauthorized access attempt by user: {}", requestingUser.getId());
                 throw new ForbiddenException("Insufficient permissions to modify users");
             }
 
-            // Manager-specific restrictions
-            // Check if target user has admin role (directly or through groups)
-            if (targetUser.hasRole(adminRole)) {
-                throw new ForbiddenException("Managers cannot modify admin accounts");
-            }
-
-            // Check if target user has manager role (directly or through groups)
-            if (targetUser.hasRole(managerRole)) {
-                throw new ForbiddenException("Managers cannot modify other manager accounts");
-            }
+            AuthenticationUtils.validateManagerPermissions(targetUser, adminRole, managerRole, targetGroup);
+            
+            // checkOrganizationAccess(provider, requestingUser, targetUser);
+            
+            AuthenticationUtils.validateGroupPermissions(requestingUser, targetGroup);
         }
+
+        logger.info("User {} authorized to modify user {} in group {}", 
+        requestingUser.getId(), targetUser.getId(), targetGroup.getName());
     }
 
 
+
+
+    /*****
+     * 
+     * 
+     * Utils Functions
+     */
 
 
     /**
@@ -189,4 +209,9 @@ public class AuthenticateMiddleware {
             .filter(Objects::nonNull)
             .anyMatch(user::hasRole);
     }
+
+
 }   
+
+
+
