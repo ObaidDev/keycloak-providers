@@ -20,7 +20,7 @@ public class App {
         ACLManager aclManager = new ACLManager(userId);
 
         // ✅ User requests access to multiple items - All exist in ACL
-        testAccess(aclManager, "gw/devices", "DELETE", Arrays.asList("6005021", "6005303", "6005305", "6005313", "6005347", "6005359", "6005376", "6005387", "6005396", "6005398", "6005515"));
+        testAccess(aclManager, "gw/devices", "DELETE", Arrays.asList("c55baac0-43b0-4ade-8db2-c4b14a34d74b" , "17196ab8-daf6-4af0-8ecf-73854ffad061"));
 
         // ❌ User requests access to multiple items - Some IDs are missing
         testAccess(aclManager, "gw/devices", "GET", Arrays.asList("6004481", "6004439", "6003329"));
