@@ -1,14 +1,21 @@
 package com.trackswiftly.user_acls;
 
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import java.util.logging.Logger;
+
+
+
 public class ACLManager {
 
     private final Map<String, Map<String, Set<String>>> aclTable;
+
+    static Logger log = Logger.getLogger(ACLManager.class.getName());
 
     public ACLManager(String userId) {
         // Convert List of IDs to HashSet for O(1) lookups
@@ -54,5 +61,18 @@ public class ACLManager {
 
         // ✅ More Efficient Check Using `Set.containsAll()`
         return allowedIds.containsAll(itemIds);
+    }
+
+
+
+    public void testEncodeDecode(){
+
+        String comporedAcl = CompressedAclService.compressAcl(aclTable);
+
+        log.info("Compressed ACL: " + comporedAcl);
+
+        Map<String, Map<String, Set<String>>> decompressedAcl = CompressedAclService.decompressAcl(comporedAcl);
+
+        log.info("Decompressed ACL: " + decompressedAcl);
     }
 }
