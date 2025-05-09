@@ -27,6 +27,14 @@
     </dependency>
 
     <dependency>
+      <groupId>com.trackswiftly.utils</groupId>
+      <artifactId>utils</artifactId>
+      <version>1.0.1</version>
+    </dependency>
+
+
+    <!-- testing -->
+    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-params</artifactId>
       <scope>test</scope>
