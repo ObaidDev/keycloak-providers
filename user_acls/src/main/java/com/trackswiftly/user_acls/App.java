@@ -27,6 +27,8 @@ public class App {
 
         // ✅ User tries to access "gw/geofences" with GET (No ID restriction)
         testAccess(aclManager, "gw/geofences", "GET", Arrays.asList("any_id"));
+
+        aclManager.testEncodeDecode();
     }
 
 
