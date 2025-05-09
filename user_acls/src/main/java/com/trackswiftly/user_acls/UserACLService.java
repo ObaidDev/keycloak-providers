@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Map;
 
 public class UserACLService {
-    private static final Map<String, Map<String, Map<String, List<String>>>> userAcls = new HashMap<>();
+
+
+     private static final Map<String, Map<String, Map<String, List<String>>>> userAcls = new HashMap<>();
 
     static {
         userAcls.put("user_123", new HashMap<>() {{
@@ -22,4 +24,5 @@ public class UserACLService {
     public static Map<String, Map<String, List<String>>> getAcl(String userId) {
         return userAcls.getOrDefault(userId, new HashMap<>());
     }
+    
 }
