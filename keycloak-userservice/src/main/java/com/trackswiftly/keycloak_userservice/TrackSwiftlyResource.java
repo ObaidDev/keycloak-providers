@@ -17,6 +17,7 @@ import org.keycloak.models.OrganizationModel;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.organization.OrganizationProvider;
+import org.keycloak.services.cors.Cors;
 import org.keycloak.services.managers.AuthenticationManager.AuthResult;
 import org.keycloak.services.resources.KeycloakOpenAPI;
 
@@ -29,6 +30,7 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.FormParam;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.OPTIONS;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -37,8 +39,11 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 
 
+
+@Slf4j
 public class TrackSwiftlyResource {
 
 
@@ -58,32 +63,18 @@ public class TrackSwiftlyResource {
     }
 
 
-    @POST
-	@Path("hello/{group}/users/{userId}")
-	@Produces(MediaType.APPLICATION_JSON)
-	@Operation(
-		summary = "Public hello endpoint",
-		description = "This endpoint returns hello and the name of the requested realm."
-	)
-    @APIResponse(
-		responseCode = "200",
-		description = "",
-		content = {@Content(
-			schema = @Schema(
-				implementation = Response.class,
-				type = SchemaType.OBJECT
-			)
-		)}
-	)
-    public Response helloAnonymous(
-        @PathParam("userId") String userId,
-        @PathParam("group") String groupName
-    ) {
-
-      
-
-		return Response.ok(Map.of("name" , "test" , "user" , "test")).build();
-	}
+    @OPTIONS
+    @Path("{any:.*}")
+    public Response preflight() {
+        log.debug("Preflight request received for CORS");
+        return Cors.builder()
+                .preflight()
+                .auth()
+                .allowAllOrigins()
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .exposedHeaders("Location")
+                .add(Response.ok());
+    }
 
 
     /*******
@@ -332,10 +323,7 @@ public class TrackSwiftlyResource {
             provider, 
             requestingUser , 
             userId
-        );
-
-        // AuthenticateMiddleware.checkRoleHierarchy(session, requestingUser, targetUser , targetUser.getGroupsStream().findFirst().get());
-        
+        );        
 
         return new UserManagementService(session).userDetails(targetUser) ;
     }
@@ -387,6 +375,20 @@ public class TrackSwiftlyResource {
         }
 
 	}
+
+
+
+
+
+    // Helper method to add CORS headers to all responses
+    private Response addCorsHeaders(Response.ResponseBuilder responseBuilder) {
+        return Cors.builder()
+                .auth()
+                .allowAllOrigins()
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .exposedHeaders("Location")
+                .add(responseBuilder);
+    }
 
 
 
