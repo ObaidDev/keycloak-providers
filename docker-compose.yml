@@ -14,7 +14,7 @@ services:
       - 5438:5432
 
   keycloak:
-    image: lasthour/trackswiftlyuser:1.0.4
+    image: lasthour/trackswiftlyuser:1.0.5
     #image: quay.io/keycloak/keycloak:26.1.0
     command: start
     # volumes:
@@ -36,7 +36,6 @@ services:
 
     ports:
       - 8081:8080
-      - 8082:8080
 
     restart: unless-stopped
     depends_on:
