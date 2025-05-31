@@ -16,10 +16,16 @@ import org.keycloak.services.resources.LoginActionsService;
 import org.keycloak.storage.adapter.InMemoryUserAdapter;
 import org.keycloak.utils.StringUtil;
 
+import com.trackswiftly.keycloak_userservice.dtos.BulkInvitationResponse;
+import com.trackswiftly.keycloak_userservice.dtos.InvitationRequest;
+import com.trackswiftly.keycloak_userservice.dtos.InvitationResult;
+import com.trackswiftly.keycloak_userservice.dtos.ProcessedInvitation;
+
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -102,6 +108,8 @@ public class OrganizationInvitationService {
 
     private Response sendInvitation(UserModel user) {
         String link = user.getId() == null ? createRegistrationLink(user) : createInvitationLink(user);
+
+        System.err.println(link + "✅");
 
         try {
             session.getProvider(EmailTemplateProvider.class)
@@ -188,5 +196,205 @@ public class OrganizationInvitationService {
         return Response.ok(userDetails).build() ;
     }
 
+
+
+
+    /*
+     * 
+     * enhance fn of invitations :
+     */
+
+
+    public Response inviteMultipleUsers(List<InvitationRequest> invitationRequests) {
+        if (invitationRequests == null || invitationRequests.isEmpty()) {
+            throw new BadRequestException("Invitation requests list cannot be empty");
+        }
+
+        BulkInvitationResponse response = new BulkInvitationResponse();
+        response.setTotalRequested(invitationRequests.size());
+
+        // Process requests and prepare valid invitations
+        List<ProcessedInvitation> validInvitations = new ArrayList<>();
+        
+        for (InvitationRequest request : invitationRequests) {
+            InvitationResult result = processInvitationRequestWithoutSending(request);
+            
+            if (result.isSuccess()) {
+                // Store the processed invitation for batch email sending
+                validInvitations.add(new ProcessedInvitation(result, request));
+            } else {
+                // Add failed validation results immediately
+                response.addResult(result);
+            }
+        }
+
+        // Send all valid invitations in batch with single SMTP connection
+        if (!validInvitations.isEmpty()) {
+            List<InvitationResult> emailResults = sendBulkInvitations(validInvitations);
+            for (InvitationResult result : emailResults) {
+                response.addResult(result);
+            }
+        }
+
+        return Response.ok(response).build();
+    }
     
+
+
+
+
+    /**
+     * Process invitation request without sending email (validation only)
+     */
+    private InvitationResult processInvitationRequestWithoutSending(InvitationRequest request) {
+        try {
+            // Handle existing user invitation by ID
+            if (!StringUtil.isBlank(request.getUserId())) {
+                return validateExistingUserInvitation(request.getUserId());
+            }
+
+            // Handle invitation by email
+            if (StringUtil.isBlank(request.getEmail())) {
+                return new InvitationResult(request.getEmail(), null, false, 
+                    "Email is required for invitation", "MISSING_EMAIL");
+            }
+
+            UserModel user = session.users().getUserByEmail(realm, request.getEmail());
+
+            if (user != null) {
+                // Existing user
+                if (organization.isMember(user)) {
+                    return new InvitationResult(request.getEmail(), user.getId(), false,
+                        "User already a member of the organization", "ALREADY_MEMBER");
+                }
+
+                return new InvitationResult(request.getEmail(), user.getId(), true, "Ready for invitation");
+            } else {
+                // New user - will need registration invitation
+                return new InvitationResult(request.getEmail(), null, true, "Ready for registration invitation");
+            }
+
+        } catch (Exception e) {
+            ServicesLogger.LOGGER.error("Error validating invitation request", e);
+            return new InvitationResult(request.getEmail(), request.getUserId(), false,
+                "Internal error: " + e.getMessage(), "INTERNAL_ERROR");
+        }
+    }
+
+
+
+    /**
+     * Validate existing user invitation without sending email
+     */
+    private InvitationResult validateExistingUserInvitation(String userId) {
+        UserModel user = session.users().getUserById(realm, userId);
+
+        if (user == null) {
+            return new InvitationResult(null, userId, false,
+                "User does not exist", "USER_NOT_FOUND");
+        }
+
+        if (organization.isMember(user)) {
+            return new InvitationResult(user.getEmail(), userId, false,
+                "User already a member of the organization", "ALREADY_MEMBER");
+        }
+
+        return new InvitationResult(user.getEmail(), userId, true, "Ready for invitation");
+    }
+
+
+
+
+    /**
+     * Send bulk invitations with single SMTP connection
+     */
+    private List<InvitationResult> sendBulkInvitations(List<ProcessedInvitation> validInvitations) {
+        List<InvitationResult> results = new ArrayList<>();
+        EmailTemplateProvider emailProvider = null;
+        
+        try {
+            // Initialize email provider once
+            emailProvider = session.getProvider(EmailTemplateProvider.class).setRealm(realm);
+            
+            for (ProcessedInvitation processedInvitation : validInvitations) {
+                InvitationResult result = processedInvitation.getResult();
+                InvitationRequest request = processedInvitation.getRequest();
+                
+                try {
+                    UserModel user = getUserForInvitation(request);
+                    String link = createInvitationLinkForUser(user);
+                    
+                    // Send email using the same provider instance
+                    emailProvider.setUser(user)
+                            .sendOrgInviteEmail(organization, link, TimeUnit.SECONDS.toMinutes(getActionTokenLifespan()));
+                    
+                    // Update result with success
+                    String successMessage = user.getId() == null ? 
+                        "Registration invitation sent successfully" : 
+                        "Invitation sent successfully";
+                    
+                    results.add(new InvitationResult(result.getEmail(), result.getUserId(), true, successMessage));
+                    
+                } catch (EmailException e) {
+                    ServicesLogger.LOGGER.error("Failed to send invitation email to: " + result.getEmail(), e);
+                    results.add(new InvitationResult(result.getEmail(), result.getUserId(), false, 
+                        "Failed to send invitation email: " + e.getMessage(), "EMAIL_SEND_FAILED"));
+                } catch (Exception e) {
+                    ServicesLogger.LOGGER.error("Error processing invitation for: " + result.getEmail(), e);
+                    results.add(new InvitationResult(result.getEmail(), result.getUserId(), false, 
+                        "Internal error: " + e.getMessage(), "INTERNAL_ERROR"));
+                }
+            }
+            
+        } catch (Exception e) {
+            ServicesLogger.LOGGER.error("Failed to initialize email provider for bulk invitations", e);
+            // If we can't initialize the email provider, mark all as failed
+            for (ProcessedInvitation processedInvitation : validInvitations) {
+                InvitationResult result = processedInvitation.getResult();
+                results.add(new InvitationResult(result.getEmail(), result.getUserId(), false, 
+                    "Failed to initialize email system", "EMAIL_SYSTEM_ERROR"));
+            }
+        }
+        
+        return results;
+    }
+
+
+
+    /**
+     * Get or create user model for invitation
+     */
+    private UserModel getUserForInvitation(InvitationRequest request) {
+        // Handle existing user by ID
+        if (!StringUtil.isBlank(request.getUserId())) {
+            return session.users().getUserById(realm, request.getUserId());
+        }
+        
+        // Handle user by email
+        UserModel user = session.users().getUserByEmail(realm, request.getEmail());
+        
+        if (user != null) {
+            return user;
+        }
+        
+        // Create temporary user for registration invitation
+        user = new InMemoryUserAdapter(session, realm, null);
+        user.setEmail(request.getEmail());
+        
+        if (request.getFirstName() != null && request.getLastName() != null) {
+            user.setFirstName(request.getFirstName());
+            user.setLastName(request.getLastName());
+        }
+        
+        return user;
+    }
+
+
+    /**
+     * Create invitation link for user
+     */
+    private String createInvitationLinkForUser(UserModel user) {
+        return user.getId() == null ? createRegistrationLink(user) : createInvitationLink(user);
+    }
+
 }

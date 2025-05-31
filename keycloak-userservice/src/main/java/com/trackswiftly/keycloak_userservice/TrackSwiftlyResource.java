@@ -21,11 +21,13 @@ import org.keycloak.services.cors.Cors;
 import org.keycloak.services.managers.AuthenticationManager.AuthResult;
 import org.keycloak.services.resources.KeycloakOpenAPI;
 
+import com.trackswiftly.keycloak_userservice.dtos.InvitationRequest;
 import com.trackswiftly.keycloak_userservice.dtos.TrackSwiftlyRoles;
 import com.trackswiftly.keycloak_userservice.middlewares.AuthenticateMiddleware;
 import com.trackswiftly.keycloak_userservice.services.OrganizationInvitationService;
 import com.trackswiftly.keycloak_userservice.services.UserManagementService;
 
+import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.FormParam;
@@ -121,6 +123,49 @@ public class TrackSwiftlyResource {
                            .build();
         }
 
+    }
+
+    /**
+     * Bulk invite multiple users - simple version like the original single invite
+     * @param userInvitations Simple list of user data (email required, firstName/lastName optional)
+     * @return BulkInvitationResponse with results for each invitation
+     */
+    @Path("invite-users-bulk")
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Tag(name = KeycloakOpenAPI.Admin.Tags.ORGANIZATIONS)
+    @Operation(summary = "Invites multiple users at once",
+            description = "Sends invitations or registration links to multiple users in a single request. " +
+                         "Automatically handles existing vs new users like the single invite method. " +
+                         "Uses a single SMTP connection for better performance.")
+    public Response inviteUsersBulk(@Valid List<InvitationRequest> userInvitations) {
+        
+        AuthenticateMiddleware.checkRealm(session);
+        AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session);
+        AuthenticateMiddleware.checkRole(authResult, session, List.of(TrackSwiftlyRoles.ADMIN, TrackSwiftlyRoles.MANAGER));
+        
+        // Get the first org of the current user
+        Stream<OrganizationModel> organizations = provider.getByMember(authResult.getUser());
+        Optional<OrganizationModel> firstOrganization = organizations.findFirst();
+        
+        if (firstOrganization.isPresent()) {
+            OrganizationModel organization = firstOrganization.get();
+            
+            // Convert simple invitations to InvitationRequest format
+            // List<InvitationRequest> requests = userInvitations.stream()
+            //     .map(simple -> new OrganizationInvitationService.InvitationRequest(
+            //         simple.getEmail(), 
+            //         simple.getFirstName(), 
+            //         simple.getLastName()))
+            //     .toList();
+            
+            return new OrganizationInvitationService(session, organization).inviteMultipleUsers(userInvitations);
+        } else {
+            return Response.status(Response.Status.NOT_FOUND)
+                           .entity(NO_ORGANIZATION_FOUND_FOR_USR)
+                           .build();
+        }
     }
 
 
@@ -375,20 +420,6 @@ public class TrackSwiftlyResource {
         }
 
 	}
-
-
-
-
-
-    // Helper method to add CORS headers to all responses
-    private Response addCorsHeaders(Response.ResponseBuilder responseBuilder) {
-        return Cors.builder()
-                .auth()
-                .allowAllOrigins()
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .exposedHeaders("Location")
-                .add(responseBuilder);
-    }
 
 
 
