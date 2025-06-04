@@ -30,7 +30,7 @@ public class TrackSwiftlyResourceFactory implements RealmResourceProviderFactory
     }
 
     @Override
-    public void init(Scope arg0) {
+    public void init(Scope config) {
         /*
          * 
          * 
