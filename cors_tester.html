@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .loading {
+            color: #856404;
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CORS Test Page</h1>
+        
+        <div class="form-group">
+            <label for="endpoint">API Endpoint:</label>
+            <input type="text" id="endpoint" value="https://auth.trackswiftly.com/realms/trackswiftlyRealm/users-services/users">
+        </div>
+        
+        <div class="form-group">
+            <label for="method">HTTP Method:</label>
+            <select id="method" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+                <option value="OPTIONS">OPTIONS</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="token">Authorization Token:</label>
+            <input type="text" id="token" placeholder="Bearer token (without 'Bearer ' prefix)">
+        </div>
+        
+        <div class="form-group">
+            <label for="contentType">Content-Type:</label>
+            <select id="contentType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="application/json">application/json</option>
+                <option value="application/x-www-form-urlencoded" selected>application/x-www-form-urlencoded</option>
+                <option value="text/plain">text/plain</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="requestBody">Request Body (for POST/PUT):</label>
+            <textarea id="requestBody" placeholder="Enter request body here..."></textarea>
+        </div>
+        
+        <button onclick="testCors()">Test CORS Request</button>
+        <button onclick="checkPreflightHeaders()">Check Preflight Headers</button>
+        <button onclick="clearResults()">Clear Results</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let resultDiv = document.getElementById('result');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}\n`;
+            
+            if (resultDiv.innerHTML === '') {
+                resultDiv.className = `result ${type}`;
+                resultDiv.textContent = logMessage;
+            } else {
+                resultDiv.textContent += logMessage;
+            }
+        }
+
+        // Main fetch method for CORS testing based on your curl command
+        async function testCors() {
+            const endpoint = document.getElementById('endpoint').value;
+            const method = document.getElementById('method').value;
+            const token = document.getElementById('token').value;
+            const contentType = document.getElementById('contentType').value;
+            const requestBody = document.getElementById('requestBody').value;
+            
+            if (!endpoint) {
+                log('Please enter an endpoint URL', 'error');
+                return;
+            }
+            
+            clearResults();
+            log('Testing CORS with fetch() method...', 'loading');
+            log(`URL: ${endpoint}`, 'info');
+            
+            // Replicate your curl command with fetch
+            const fetchOptions = {
+                method: method,
+                headers: {
+                    'Content-Type': contentType
+                },
+                mode: 'cors',
+                credentials: 'omit' // Can change to 'include' if cookies needed
+            };
+            
+            // Add Authorization header if token provided
+            if (token) {
+                fetchOptions.headers['Authorization'] = `Bearer ${token}`;
+                log('Added Authorization: Bearer [token]', 'info');
+            }
+            
+            // Add body for POST/PUT requests
+            if (method !== 'GET' && method !== 'HEAD' && requestBody) {
+                fetchOptions.body = requestBody;
+                log(`Request body added: ${requestBody.length} characters`, 'info');
+            }
+            
+            log('fetch() options:', 'info');
+            log(JSON.stringify(fetchOptions, null, 2), 'info');
+            
+            try {
+                log('Executing fetch()...', 'loading');
+                
+                // This is the main fetch call that will trigger CORS
+                const response = await fetch(endpoint, fetchOptions);
+                
+                log(`✅ fetch() succeeded!`, 'success');
+                log(`Response status: ${response.status} ${response.statusText}`, 'success');
+                log(`Response headers:`, 'info');
+                
+                // Log all response headers
+                for (let [key, value] of response.headers.entries()) {
+                    log(`  ${key}: ${value}`, 'info');
+                }
+                
+                // Check specific CORS headers
+                log(`\nCORS-specific headers:`, 'success');
+                const corsHeaders = [
+                    'access-control-allow-origin',
+                    'access-control-allow-methods', 
+                    'access-control-allow-headers',
+                    'access-control-allow-credentials'
+                ];
+                
+                corsHeaders.forEach(header => {
+                    const value = response.headers.get(header);
+                    if (value) {
+                        log(`  ✓ ${header}: ${value}`, 'success');
+                    } else {
+                        log(`  ✗ ${header}: not present`, 'error');
+                    }
+                });
+                
+                // Try to read response body
+                try {
+                    const responseText = await response.text();
+                    if (responseText) {
+                        log(`\nResponse body (${responseText.length} chars):`, 'info');
+                        log(responseText.substring(0, 300) + (responseText.length > 300 ? '...' : ''), 'info');
+                    } else {
+                        log('Response body is empty', 'info');
+                    }
+                } catch (bodyError) {
+                    log(`Could not read response body: ${bodyError.message}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ fetch() failed with error:`, 'error');
+                log(`Error name: ${error.name}`, 'error');
+                log(`Error message: ${error.message}`, 'error');
+                
+                // Analyze the error type
+                if (error.name === 'TypeError' && error.message.includes('CORS')) {
+                    log(`\n🔍 CORS Error Analysis:`, 'error');
+                    log(`This is a CORS policy violation. The server must:`, 'error');
+                    log(`1. Include 'Access-Control-Allow-Origin' header`, 'error');
+                    log(`2. Allow the current origin: ${window.location.origin}`, 'error');
+                    log(`3. Include 'Access-Control-Allow-Headers' for Authorization`, 'error');
+                    log(`4. Include 'Access-Control-Allow-Methods' for ${method}`, 'error');
+                } else if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                    log(`\n🔍 Network Error Analysis:`, 'error');
+                    log(`Could be CORS, network issue, or server down`, 'error');
+                    log(`Try the OPTIONS request to check preflight`, 'error');
+                } else {
+                    log(`\n🔍 Other Error:`, 'error');
+                    log(`This might be a different type of error`, 'error');
+                }
+            }
+        }
+
+        // Test preflight OPTIONS request
+        async function checkPreflightHeaders() {
+            const endpoint = document.getElementById('endpoint').value;
+            
+            if (!endpoint) {
+                log('Please enter an endpoint URL', 'error');
+                return;
+            }
+            
+            clearResults();
+            log('Testing preflight OPTIONS with fetch()...', 'loading');
+            
+            try {
+                // Send OPTIONS request to check preflight
+                const response = await fetch(endpoint, {
+                    method: 'OPTIONS',
+                    mode: 'cors',
+                    headers: {
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'authorization,content-type'
+                    }
+                });
+                
+                log(`✅ OPTIONS fetch() succeeded!`, 'success');
+                log(`Status: ${response.status} ${response.statusText}`, 'success');
+                
+                log(`\nPreflight response headers:`, 'info');
+                for (let [key, value] of response.headers.entries()) {
+                    log(`  ${key}: ${value}`, 'info');
+                }
+                
+                // Check required preflight headers
+                const requiredHeaders = [
+                    'access-control-allow-origin',
+                    'access-control-allow-methods',
+                    'access-control-allow-headers'
+                ];
+                
+                log(`\nPreflight validation:`, 'success');
+                requiredHeaders.forEach(header => {
+                    const value = response.headers.get(header);
+                    if (value) {
+                        log(`  ✓ ${header}: ${value}`, 'success');
+                    } else {
+                        log(`  ✗ ${header}: missing (required for CORS)`, 'error');
+                    }
+                });
+                
+            } catch (error) {
+                log(`❌ OPTIONS fetch() failed:`, 'error');
+                log(`Error: ${error.message}`, 'error');
+                log(`Server may not support CORS preflight requests`, 'error');
+            }
+        }
+
+        function clearResults() {
+            resultDiv.textContent = '';
+            resultDiv.className = 'result';
+        }
+
+        // Pre-fill with your curl example
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('token').value = 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiS...';
+            log('Ready to test CORS with fetch() method', 'info');
+            log('This page replicates your curl command using JavaScript fetch()', 'info');
+        });
+    </script>
+</body>
+</html>
