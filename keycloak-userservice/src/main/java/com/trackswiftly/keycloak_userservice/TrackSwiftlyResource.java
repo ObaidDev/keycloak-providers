@@ -26,6 +26,7 @@ import com.trackswiftly.keycloak_userservice.dtos.TrackSwiftlyRoles;
 import com.trackswiftly.keycloak_userservice.middlewares.AuthenticateMiddleware;
 import com.trackswiftly.keycloak_userservice.services.OrganizationInvitationService;
 import com.trackswiftly.keycloak_userservice.services.UserManagementService;
+import com.trackswiftly.keycloak_userservice.utils.CorsUtils;
 
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
@@ -39,6 +40,8 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -95,7 +98,9 @@ public class TrackSwiftlyResource {
             description = "If the user with the given e-mail address exists, it sends an invitation link, otherwise it sends a registration link.")
     public Response inviteUser(@FormParam("email") String email,
                                @FormParam("firstName") String firstName,
-                               @FormParam("lastName") String lastName) {
+                               @FormParam("lastName") String lastName ,
+                               @Context HttpHeaders headers
+        ) {
         
         
         AuthenticateMiddleware.checkRealm(session);
@@ -111,10 +116,11 @@ public class TrackSwiftlyResource {
 
         Optional<OrganizationModel> firstOrganization = organizations.findFirst();
         
+        Response response ;
         if (firstOrganization.isPresent()) {
             OrganizationModel organization = firstOrganization.get();
 
-            return new OrganizationInvitationService(session, organization).inviteUser(email, firstName, lastName);
+            response =  new OrganizationInvitationService(session, organization).inviteUser(email, firstName, lastName);
 
         } else {
 
@@ -123,6 +129,7 @@ public class TrackSwiftlyResource {
                            .build();
         }
 
+        return CorsUtils.addCorsHeaders(response, headers);
     }
 
     /**
@@ -179,7 +186,9 @@ public class TrackSwiftlyResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Tag(name = KeycloakOpenAPI.Admin.Tags.ORGANIZATIONS)
     @Operation(summary = "Retrieve groups for the current realm")
-    public Response getRealmGroups() {
+    public Response getRealmGroups(
+        @Context HttpHeaders headers
+    ) {
 
         AuthenticateMiddleware.checkRealm(session);
 
@@ -196,7 +205,8 @@ public class TrackSwiftlyResource {
             ))
             .toList();
         
-        return Response.ok(groups).build();
+
+        return CorsUtils.addCorsHeaders(Response.ok(groups).build(), headers);
     }
 
 
@@ -206,7 +216,8 @@ public class TrackSwiftlyResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response assignUserToGroup(
         @PathParam("userId") String userId, 
-        @PathParam("group") String groupName
+        @PathParam("group") String groupName,
+        @Context HttpHeaders headers
     ) {
         AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session);
         
@@ -234,8 +245,9 @@ public class TrackSwiftlyResource {
 
         AuthenticateMiddleware.checkRoleHierarchy(session, requestingUser, targetUser , group);
 
-        return new UserManagementService(session).assignUserToGroup(requestingUser, targetUser, group) ;
-        
+        Response response = new UserManagementService(session).assignUserToGroup(requestingUser, targetUser, group) ;
+
+        return CorsUtils.addCorsHeaders(response, headers) ;        
     }
 
 
@@ -246,7 +258,8 @@ public class TrackSwiftlyResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response unAssignUserFromGroup(
         @PathParam("userId") String userId, 
-        @PathParam("group") String groupName
+        @PathParam("group") String groupName,
+        @Context HttpHeaders headers
     ) {
         AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session);
         
@@ -274,7 +287,10 @@ public class TrackSwiftlyResource {
 
         AuthenticateMiddleware.checkRoleHierarchy(session, requestingUser, targetUser , group);
 
-        return new UserManagementService(session).unassignUserFromGroup(requestingUser, targetUser, group) ;  
+        Response response = new UserManagementService(session).unassignUserFromGroup(requestingUser, targetUser, group) ; 
+
+
+        return CorsUtils.addCorsHeaders(response, headers) ;
     }
 
 
@@ -282,7 +298,9 @@ public class TrackSwiftlyResource {
     @Path("users")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getUsers() {
+    public Response getUsers(
+        @Context HttpHeaders headers
+    ) {
         
         
         AuthenticateMiddleware.checkRealm(session);
@@ -298,10 +316,12 @@ public class TrackSwiftlyResource {
 
         Optional<OrganizationModel> firstOrganization = organizations.findFirst();
         
+
+        Response response;
         if (firstOrganization.isPresent()) {
             OrganizationModel organization = firstOrganization.get();
 
-            return new OrganizationInvitationService(session, organization).getOrgMembers(provider , 0 , 20);
+            response =  new OrganizationInvitationService(session, organization).getOrgMembers(provider , 0 , 20);
 
         } else {
 
@@ -310,6 +330,8 @@ public class TrackSwiftlyResource {
                            .build();
         }
 
+
+        return CorsUtils.addCorsHeaders(response, headers) ;
     }
 
 
@@ -320,7 +342,8 @@ public class TrackSwiftlyResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response toggleUser(
         @PathParam("userId") String userId, 
-        @QueryParam("enabled") boolean enabled
+        @QueryParam("enabled") boolean enabled ,
+        @Context HttpHeaders headers
     ) {
         AuthenticateMiddleware.checkRealm(session);
 
@@ -341,8 +364,9 @@ public class TrackSwiftlyResource {
 
         AuthenticateMiddleware.preventUserFromUpdatingThemselves(requestingUser, targetUser);
         
-
-        return new UserManagementService(session).toggleUserStatus(targetUser, enabled);
+        Response response =  new UserManagementService(session).toggleUserStatus(targetUser, enabled);
+        
+        return CorsUtils.addCorsHeaders(response, headers) ;
     }
 
 
@@ -351,7 +375,8 @@ public class TrackSwiftlyResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Response getUser(
-        @PathParam("userId") String userId
+        @PathParam("userId") String userId ,
+        @Context HttpHeaders headers
     ) {
         AuthenticateMiddleware.checkRealm(session);
         
@@ -370,7 +395,9 @@ public class TrackSwiftlyResource {
             userId
         );        
 
-        return new UserManagementService(session).userDetails(targetUser) ;
+        Response response =  new UserManagementService(session).userDetails(targetUser) ;
+
+        return CorsUtils.addCorsHeaders(response, headers) ;
     }
 
 
