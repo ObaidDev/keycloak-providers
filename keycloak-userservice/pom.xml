@@ -5,7 +5,7 @@
 	
 	<groupId>com.trackswiftly</groupId>
 	<artifactId>keycloak-userservice</artifactId>
-	<version>0.0.7</version>
+	<version>0.0.8</version>
 	<name>keycloak-userservice</name>
 	<description>Demo project for Spring Boot</description>
 	<url/>

@@ -27,6 +27,7 @@ import com.trackswiftly.keycloak_userservice.middlewares.AuthenticateMiddleware;
 import com.trackswiftly.keycloak_userservice.services.OrganizationInvitationService;
 import com.trackswiftly.keycloak_userservice.services.UserManagementService;
 import com.trackswiftly.keycloak_userservice.utils.CorsUtils;
+import com.trackswiftly.keycloak_userservice.utils.EmailValidator;
 
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
@@ -149,7 +150,7 @@ public class TrackSwiftlyResource {
                          "Automatically handles existing vs new users like the single invite method. " +
                          "Uses a single SMTP connection for better performance.")
     public Response inviteUsersBulk(
-            @Valid List<InvitationRequest> userInvitations,
+            @Valid List<@Valid InvitationRequest> userInvitations,
             @Context HttpHeaders headers
         ) {
         
@@ -157,22 +158,33 @@ public class TrackSwiftlyResource {
         AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session);
         AuthenticateMiddleware.checkRole(authResult, session, List.of(TrackSwiftlyRoles.ADMIN, TrackSwiftlyRoles.MANAGER));
         
+
+
+        Response response ;
+
+        // Validate the request before processing
+        EmailValidator.ValidationResult validationResult = EmailValidator.validateInvitationRequests(userInvitations);
+        if (!validationResult.isValid()) {
+            
+            response =  Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of(
+                            "error", "VALIDATION_ERROR",
+                            "message", "Invalid request data",
+                            "details", validationResult.getErrors()
+                        ))
+                        .build();
+
+            return CorsUtils.addCorsHeaders(response, headers);
+        }
+
         // Get the first org of the current user
         Stream<OrganizationModel> organizations = provider.getByMember(authResult.getUser());
         Optional<OrganizationModel> firstOrganization = organizations.findFirst();
         
 
-        Response response ;
+        
         if (firstOrganization.isPresent()) {
             OrganizationModel organization = firstOrganization.get();
-            
-            // Convert simple invitations to InvitationRequest format
-            // List<InvitationRequest> requests = userInvitations.stream()
-            //     .map(simple -> new OrganizationInvitationService.InvitationRequest(
-            //         simple.getEmail(), 
-            //         simple.getFirstName(), 
-            //         simple.getLastName()))
-            //     .toList();
             
             response = new OrganizationInvitationService(session, organization).inviteMultipleUsers(userInvitations);
         } else {
