@@ -96,10 +96,12 @@ public class TrackSwiftlyResource {
     @Tag(name = KeycloakOpenAPI.Admin.Tags.ORGANIZATIONS)
     @Operation(summary = "Invites an existing user or sends a registration link to a new user, based on the provided e-mail address.",
             description = "If the user with the given e-mail address exists, it sends an invitation link, otherwise it sends a registration link.")
-    public Response inviteUser(@FormParam("email") String email,
-                               @FormParam("firstName") String firstName,
-                               @FormParam("lastName") String lastName ,
-                               @Context HttpHeaders headers
+    public Response inviteUser
+        (
+            @FormParam("email") String email,
+            @FormParam("firstName") String firstName,
+            @FormParam("lastName") String lastName ,
+            @Context HttpHeaders headers
         ) {
         
         
@@ -146,7 +148,10 @@ public class TrackSwiftlyResource {
             description = "Sends invitations or registration links to multiple users in a single request. " +
                          "Automatically handles existing vs new users like the single invite method. " +
                          "Uses a single SMTP connection for better performance.")
-    public Response inviteUsersBulk(@Valid List<InvitationRequest> userInvitations) {
+    public Response inviteUsersBulk(
+            @Valid List<InvitationRequest> userInvitations,
+            @Context HttpHeaders headers
+        ) {
         
         AuthenticateMiddleware.checkRealm(session);
         AuthResult authResult = AuthenticateMiddleware.checkAuthentication(session);
@@ -156,6 +161,8 @@ public class TrackSwiftlyResource {
         Stream<OrganizationModel> organizations = provider.getByMember(authResult.getUser());
         Optional<OrganizationModel> firstOrganization = organizations.findFirst();
         
+
+        Response response ;
         if (firstOrganization.isPresent()) {
             OrganizationModel organization = firstOrganization.get();
             
@@ -167,12 +174,15 @@ public class TrackSwiftlyResource {
             //         simple.getLastName()))
             //     .toList();
             
-            return new OrganizationInvitationService(session, organization).inviteMultipleUsers(userInvitations);
+            response = new OrganizationInvitationService(session, organization).inviteMultipleUsers(userInvitations);
         } else {
             return Response.status(Response.Status.NOT_FOUND)
                            .entity(NO_ORGANIZATION_FOUND_FOR_USR)
                            .build();
         }
+
+
+        return CorsUtils.addCorsHeaders(response, headers);
     }
 
 
