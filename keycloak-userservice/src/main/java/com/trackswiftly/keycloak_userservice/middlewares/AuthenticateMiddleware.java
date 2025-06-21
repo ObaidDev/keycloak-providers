@@ -48,7 +48,7 @@ public class AuthenticateMiddleware {
         RealmModel realm = session.getContext().getRealm();
         String realmName = realm.getName();
 
-        if (!realmName.toLowerCase().matches(".*?(track|swiftly).*")) {
+        if (!realmName.toLowerCase().matches(".*?(track|swiftly|b2b|org).*")) {
             throw new ForbiddenException("This Endpoint is only available in realms containing 'track' or 'swiftly' in their name");
         }
     }
